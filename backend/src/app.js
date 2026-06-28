@@ -1,7 +1,6 @@
 // 1. IMPORTATION DES PACKAGES
 const express = require('express'); // Le framework pour créer le serveur et gérer les routes
 const cors = require('cors');       // Sécurité pour autoriser ton frontend à requêter ton backend
-const connectDB = require('./config/db'); // Importation de la fonction pour se connecter à la base de données
 require('dotenv').config();         // Charge le contenu de ton fichier .env dans 'process.env'
 const authRoutes = require('./routes/authRoutes');
 const affectationRoutes = require('./routes/affectationRoutes');
@@ -28,14 +27,4 @@ app.get('/', (req, res) => {
     res.json({ message: "Bienvenue sur l'API de CarLog Pro !" });
 });
 
-// 4. CONNEXION A LA BASE DE DONNEES
-connectDB();
-
-// 5. DEMARRAGE DU SERVEUR
-// On récupère le PORT du fichier .env (process.env.PORT). S'il n'y est pas, on prend 5000 par défaut.
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-    console.log(`Serveur démarré sur le port ${PORT}`);
-});
-
-module.exports = { swaggerUi, specs }; // Exportation de la configuration Swagger pour l'utiliser dans d'autres fichiers
+module.exports = app;
