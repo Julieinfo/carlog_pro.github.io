@@ -1,17 +1,33 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Entreprise = require('../models/Entreprise');
-// Génération du token JWT (Valable 7 jours)
+
+/**
+ * Genere un token JWT pour un utilisateur.
+ * Role : creer un jeton d'authentification qui sera utilise par le client pour les requetes suivantes.
+ * Parametres : id (l'ID de l'utilisateur a encoder dans le token)
+ * Valeur de retour : string (le token JWT signe)
+ * 
+ * Note : Le token dure 7 jours pour eviter une reconnexion trop frequente tout en restant raisonnable cote securite.
+ * J'aurais pu choisir une duree plus courte (ex: 1h) pour plus de securite, mais 7 jours est un bon compromis UX/securite pour ce type d'application.
+ */
 const genererToken = (id) =>
     jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
-// ==========================================
-// POST /api/auth/inscription
-// ==========================================
+// Inscription SaaS : creation de l'entreprise + creation du premier admin dans la meme action.
+// C'est une operation complexe car elle touche deux collections differentes (User et Entreprise).
 
+/**
+ * Inscrit un nouvel utilisateur et cree son entreprise en meme temps.
+ * Role : permettre la creation d'un compte SaaS avec l'entreprise associee.
+ * Parametres : infos utilisateur (nom, prenom, email, motDePasse, telephone) + infos entreprise (nomEntreprise, siret, emailProfessionnel, telephoneEntreprise, adresse)
+ * Valeur de retour : token JWT + infos utilisateur + entrepriseId
+ */
 exports.inscription = async (req, res) => {
     try {
-        // 1. Extraction de toutes les données du body (Champs Admin + Champs Entreprise)
+        // On recupere les infos admin et les infos entreprise depuis le formulaire d'inscription.
+        // J'ai choisi de tout recevoir dans un seul body plutot que de faire deux appels separe,
+        // car c'est plus simple pour le frontend et ça garantit la coherence des donnees.
         const { 
         nom, 
         prenom, 
@@ -22,25 +38,36 @@ exports.inscription = async (req, res) => {
         siret, 
         emailProfessionnel, 
         telephoneEntreprise,
-        adresse // Doit être un objet { rue, codePostal, ville, pays }
+        adresse // attendu : { rue, codePostal, ville, pays }
         } = req.body;
-        // 2. Vérification : l'utilisateur existe-t-il déjà ?
+        
+        // On bloque les doublons email pour garder un identifiant de connexion unique.
+        // C'est important pour eviter que deux utilisateurs aient le meme email, ce qui causerait des confusions.
         if (await User.findOne({ email })) {
         return res.status(400).json({ message: 'Cet email est déjà utilisé par un utilisateur.' });
         }
-        // 3. Vérification : l'entreprise existe-t-elle déjà (via son SIRET) ?
+        
+        // Le SIRET sert de garde-fou contre la creation de la meme entreprise plusieurs fois.
+        // En France, le SIRET est unique par entreprise, donc c'est un bon moyen d'eviter les doublons.
+        // J'aurais pu aussi verifier par nom d'entreprise, mais le SIRET est plus fiable.
         if (await Entreprise.findOne({ siret })) {
         return res.status(400).json({ message: 'Une entreprise avec ce SIRET est déjà enregistrée.' });
         }
-        // 4. Création de l'Entreprise avec TOUS ses champs obligatoires
+        
+        // On cree l'entreprise avant l'utilisateur pour recuperer son _id et faire le lien proprement.
+        // L'ordre est important : l'utilisateur a besoin de l'ID de l'entreprise pour etre rattache.
+        // Si on faisait l'inverse, on devrait faire un update supplementaire sur l'utilisateur.
         const entreprise = await Entreprise.create({ 
         nom: nomEntreprise,
         siret,
         emailProfessionnel,
-        telephone: telephoneEntreprise, // 🔥 Mappage correct sur le champ 'telephone' du modèle
+        telephone: telephoneEntreprise,
         adresse
         });
-        // 5. Création de l'utilisateur Admin lié à cette entreprise
+        
+        // Le premier compte est force en admin entreprise : c'est le compte "owner" initial.
+        // C'est une mesure de securite importante pour eviter que le premier utilisateur n'ait pas les droits.
+        // On force aussi typeCompte a 'entreprise' pour differencier des autres types de comptes (ex: conducteurs).
         const user = await User.create({ 
         nom, 
         prenom,
@@ -51,7 +78,9 @@ exports.inscription = async (req, res) => {
         role: 'admin',             // Sécurité : Forcé pour le créateur du compte SaaS
         typeCompte: 'entreprise'   // Sécurité : Forcé pour le compte principal
         });
-        // 6. Envoi de la réponse avec le token et les infos de l'user
+        
+        // On renvoie le token des l'inscription pour connecter l'utilisateur automatiquement.
+        // C'est une bonne pratique UX : l'utilisateur n'a pas a se reconnecter apres s'etre inscrit.
         res.status(201).json({
         token: genererToken(user._id),
         user: { 
@@ -68,20 +97,32 @@ exports.inscription = async (req, res) => {
     }
 };
 
-// ==========================================
-// POST /api/auth/connexion
-// ==========================================
+// Connexion : on verifie identifiants puis on regenere un JWT.
+// C'est le point d'entree principal pour les utilisateurs deja inscrits.
 
+/**
+ * Connecte un utilisateur existant avec ses identifiants.
+ * Role : verifier les identifiants et generer un nouveau token JWT.
+ * Parametres : email, motDePasse
+ * Valeur de retour : token JWT + infos utilisateur (sans le mot de passe)
+ */
 exports.connexion = async (req, res) => {
     try {
         const { email, motDePasse } = req.body;
         
-        // On récupère l'user ET son mot de passe (qui est masqué par défaut dans le modèle)
+        // motDePasse est cache dans le schema (select: false), donc on l'ajoute explicitement juste pour cette verification.
+        // C'est une bonne pratique de securite : par defaut, on ne renvoie jamais le mot de passe dans les requetes.
         const user = await User.findOne({ email }).select('+motDePasse');
-        // Si l'utilisateur n'existe pas ou que le mot de passe ne correspond pas
+        
+        // Message volontairement vague pour ne pas aider un attaquant a deviner ce qui est faux.
+        // Si on disait "Email inexistant" ou "Mot de passe incorrect", un attaquant pourrait enumerer les comptes.
+        // J'ai choisi de ne pas differencier les cas pour eviter ce type d'attaque.
         if (!user || !(await user.verifierMotDePasse(motDePasse))) {
         return res.status(401).json({ message: 'Identifiants invalides.' });
         }
+        
+        // On renvoie un nouveau token a chaque connexion.
+        // J'aurais pu implementer un systeme de refresh token, mais pour l'instant un simple token suffit.
         res.json({
         token: genererToken(user._id),
         user: { 
