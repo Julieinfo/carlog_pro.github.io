@@ -224,3 +224,36 @@ exports.terminerAffectation = async (req, res) => {
         res.status(500).json({ message: err.message });
     }
 };
+
+// ==========================================
+// DELETE /api/affectations/:id (Supprimer une affectation - Sécurisée)
+// ==========================================
+
+/**
+ * Supprime une affectation de la base de donnees.
+ * Role : permettre la suppression d'une affectation (en cas d'erreur de creation par exemple).
+ * Parametres : id (dans l'URL)
+ * Valeur de retour : message de confirmation
+ */
+exports.supprimerAffectation = async (req, res) => {
+    try {
+        const entrepriseId = req.user.entreprise;
+
+        // Securisation multi-tenant : on filtre par ID ET par entreprise.
+        // findOneAndDelete est parfait pour ça : il fait la recherche et la suppression en une seule operation atomique.
+        const affectationSupprimee = await Affectation.findOneAndDelete(
+            { _id: req.params.id, entreprise: entrepriseId }
+        );
+
+        if (!affectationSupprimee) {
+            return res.status(404).json({ message: 'Affectation introuvable ou accès refusé.' });
+        }
+
+        // J'ai choisi d'autoriser la suppression meme pour les affectations en cours.
+        // En prod, on pourrait vouloir empecher ça pour forcer la cloture propre (terminerAffectation).
+        // Mais pour l'instant, ça donne de la flexibilite pour corriger les erreurs.
+        res.status(200).json({ message: 'Affectation supprimée avec succès.' });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};

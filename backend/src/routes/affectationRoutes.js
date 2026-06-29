@@ -6,6 +6,9 @@ const router = express.Router();
 // authorize verifie que l'utilisateur a le role necessaire pour acceder a la route.
 const { protect, authorize } = require('../middlewares/authMiddleware');
 
+// Import des validateurs express-validator pour les affectations.
+const { validateCreerAffectation, validateModifierAffectation, validateTerminerAffectation } = require('../middlewares/validators/affectationValidator');
+
 // 2. Importation de TOUTES les fonctions du controleur affectation.
 // J'importe toutes les fonctions d'un coup pour avoir une vue d'ensemble.
 // J'aurais pu importer le controleur entier et faire affectationController.getAffectations,
@@ -15,7 +18,8 @@ const {
     creerAffectation,
     getAffectationById,
     modifierAffectation,
-    terminerAffectation
+    terminerAffectation,
+    supprimerAffectation
 } = require('../controllers/affectationController');
 
 // ==========================================
@@ -33,9 +37,15 @@ router.get('/:id', protect, authorize('admin', 'fleet_manager', 'conducteur'), g
 // Creer, Modifier et Clore une affectation (Reserve Admin et Fleet Manager).
 // J'ai restreint ces operations aux roles de gestion car ce sont des actions sensibles.
 // Les conducteurs ne doivent pas pouvoir creer ou modifier des affectations arbitrairement.
-router.post('/', protect, authorize('admin', 'fleet_manager'), creerAffectation);
-router.put('/:id/terminer', protect, authorize('admin', 'fleet_manager'), terminerAffectation);
-router.put('/:id', protect, authorize('admin', 'fleet_manager'), modifierAffectation);
+// J'ajoute les validateurs pour s'assurer que les donnees sont valides avant d'arriver au controleur.
+router.post('/', protect, authorize('admin', 'fleet_manager'), validateCreerAffectation, creerAffectation);
+router.put('/:id/terminer', protect, authorize('admin', 'fleet_manager'), validateTerminerAffectation, terminerAffectation);
+router.put('/:id', protect, authorize('admin', 'fleet_manager'), validateModifierAffectation, modifierAffectation);
+
+// Supprimer une affectation (Reserve Admin uniquement).
+// J'ai limite la suppression au seul role admin car c'est une operation critique.
+// Meme les fleet managers ne devraient pas pouvoir supprimer des affectations sans validation.
+router.delete('/:id', protect, authorize('admin'), supprimerAffectation);
 
 // Export du routeur pour pouvoir l'utiliser dans app.js.
 module.exports = router;

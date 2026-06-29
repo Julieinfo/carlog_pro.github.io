@@ -138,3 +138,30 @@ exports.connexion = async (req, res) => {
         res.status(500).json({ message: err.message });
     }
 };
+
+// ==========================================
+// GET /api/auth/me (Profil utilisateur connecte)
+// ==========================================
+
+/**
+ * Recupere le profil de l'utilisateur connecte.
+ * Role : permettre au frontend d'afficher les infos de l'utilisateur connecte.
+ * Parametres : aucun (utilise req.user depuis le middleware protect)
+ * Valeur de retour : objet avec les infos de l'utilisateur (sans le mot de passe)
+ */
+exports.getProfil = async (req, res) => {
+    try {
+        // req.user est disponible grace au middleware protect qui a decode le JWT.
+        // J'ai choisi de renvoyer req.user directement plutot que de refaire une requete a la base,
+        // car les infos dans le token sont suffisantes pour afficher le profil.
+        // Si on avait besoin de donnees a jour (ex: role modifie), il faudrait refaire une requete.
+        
+        // J'exclus explicitement le mot de passe de la reponse pour la securite.
+        // Meme si le middleware le fait deja, c'est une double securite.
+        const { motDePasse, ...userSansMotDePasse } = req.user.toObject();
+        
+        res.status(200).json(userSansMotDePasse);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};

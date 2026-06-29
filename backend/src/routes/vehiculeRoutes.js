@@ -6,6 +6,9 @@ const router = express.Router();
 // authorize verifie que l'utilisateur a le role necessaire pour l'operation.
 const { protect, authorize } = require('../middlewares/authMiddleware');
 
+// Import des validateurs express-validator pour les vehicules.
+const { validateCreerVehicule, validateModifierVehicule } = require('../middlewares/validators/vehiculeValidator');
+
 // Import des fonctions du controleur vehicule.
 // J'utilise la destructuration pour importer chaque fonction individuellement.
 const {
@@ -30,8 +33,9 @@ router.get('/:id', protect, authorize('admin', 'fleet_manager', 'conducteur'), g
 // 2. Creation et Modification : Reservees aux profils "Gestion" (Admin + Manager).
 // J'ai limite ces operations car la gestion du parc est une responsabilite administrative.
 // Les conducteurs ne doivent pas pouvoir ajouter ou modifier des vehicules arbitrairement.
-router.post('/', protect, authorize('admin', 'fleet_manager'), creerVehicule);
-router.put('/:id', protect, authorize('admin', 'fleet_manager'), modifierVehicule);
+// J'ajoute les validateurs pour s'assurer que les donnees sont valides.
+router.post('/', protect, authorize('admin', 'fleet_manager'), validateCreerVehicule, creerVehicule);
+router.put('/:id', protect, authorize('admin', 'fleet_manager'), validateModifierVehicule, modifierVehicule);
 
 // 3. Suppression : Reservee exclusivement a l'Admin.
 // J'ai restreint la suppression au seul role admin car c'est une operation critique.

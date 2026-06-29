@@ -7,6 +7,9 @@ const router = express.Router();
 // J'ai choisi cette approche car la gestion des alertes est une activite commune.
 const { protect } = require('../middlewares/authMiddleware');
 
+// Import des validateurs express-validator pour les alertes.
+const { validateCreerAlerte, validateModifierAlerte } = require('../middlewares/validators/alerteValidator');
+
 // Import des fonctions du controleur alerte.
 // J'utilise la destructuration pour importer chaque fonction individuellement.
 const {
@@ -27,7 +30,8 @@ const {
 // 1. [CREATE] - Creer une alerte (Manuelle ou Automatique).
 // J'ai autorise tous les utilisateurs authentifies a creer des alertes,
 // car meme un conducteur peut signaler un probleme sur son vehicule.
-router.post('/', protect, creerAlerte);
+// J'ajoute le validateur pour s'assurer que les donnees sont valides.
+router.post('/', protect, validateCreerAlerte, creerAlerte);
 
 // 2. [READ ALL] - Recuperer toutes les alertes de l'entreprise.
 // Pratique pour filtrer par statut via req.query (ex: ?statut=en_cours).
@@ -45,7 +49,8 @@ router.get('/:id', protect, getAlerteById);
 
 // 5. [UPDATE] - Modifier ou Resoudre une alerte (statut, notes de maintenance...).
 // Permet de mettre a jour les informations ou de marquer l'alerte comme resolue.
-router.put('/:id', protect, modifierAlerte);
+// J'ajoute le validateur pour s'assurer que les donnees sont valides.
+router.put('/:id', protect, validateModifierAlerte, modifierAlerte);
 
 // 6. [DELETE] - Supprimer definitivement une alerte (erreur de saisie).
 // J'ai autorise la suppression car les alertes peuvent etre creees par erreur.
