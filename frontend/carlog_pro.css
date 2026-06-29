@@ -1,28 +1,36 @@
+/* Reset CSS de base : box-sizing border-box évite les problèmes de calcul de largeur/padding */
+/* J'ai mis ça au début pour être sûr que tous les éléments héritent de ce comportement */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* Variables CSS (custom properties) : super pratique pour gérer le thème */
+/* C'est mieux que des constantes SCSS car on peut les modifier dynamiquement en JS si besoin */
 :root {
-  --red: #D72638;
-  --red-light: #FF3B4E;
-  --red-dim: rgba(215,38,56,0.12);
-  --bg: #0A0A0B;
-  --bg2: #111113;
-  --bg3: #18181C;
-  --border: rgba(255,255,255,0.07);
-  --text: #F0EEE8;
-  --muted: #6B6870;
-  --accent: #FF3B4E;
+  --red: #D72638;       /* Couleur principale de la marque */
+  --red-light: #FF3B4E; /* Version plus claire pour les hover */
+  --red-dim: rgba(215,38,56,0.12); /* Version transparente pour les fonds */
+  --bg: #0A0A0B;        /* Fond principal (presque noir) */
+  --bg2: #111113;       /* Fond secondaire (légèrement plus clair) */
+  --bg3: #18181C;       /* Fond tertiaire (pour les cartes) */
+  --border: rgba(255,255,255,0.07); /* Bordures subtiles */
+  --text: #F0EEE8;      /* Texte principal */
+  --muted: #6B6870;     /* Texte secondaire (gris) */
+  --accent: #FF3B4E;    /* Accent pour les éléments importants */
 }
 
+/* scroll-behavior smooth permet un défilement fluide quand on clique sur les ancres */
+/* C'est une propriété CSS native, pas besoin de JS pour ça */
 html { scroll-behavior: smooth; }
 
 body {
   background: var(--bg);
   color: var(--text);
   font-family: 'DM Sans', sans-serif;
-  overflow-x: hidden;
+  overflow-x: hidden; /* Évite le scroll horizontal accidentel sur mobile */
 }
 
-/* NOISE OVERLAY */
+/* NOISE OVERLAY : effet de texture subtile sur toute la page */
+/* J'ai utilisé un SVG inline avec un filtre de bruit fractal pour éviter de charger une image externe */
+/* pointer-events: none est important pour ne pas bloquer les clics sur les éléments en dessous */
 body::before {
   content: '';
   position: fixed;
@@ -33,7 +41,9 @@ body::before {
   opacity: 0.5;
 }
 
-/* NAV */
+/* NAV : barre de navigation fixe en haut de page */
+/* backdrop-filter crée l'effet de flou derrière la navbar (style macOS/iOS) */
+/* J'ai mis un fallback -webkit- pour Safari qui a parfois du retard sur les standards */
 nav {
   position: fixed;
   top: 0; left: 0; right: 0;
