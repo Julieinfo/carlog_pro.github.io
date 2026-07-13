@@ -19,8 +19,12 @@ const { swaggerUi, specs } = require('./config/swagger');
 // Sans cookie d'authentification automatique, les attaques CSRF sont impossibles par conception.
 // Le middleware csurf serait donc inutile ici et pourrait même bloquer les requêtes légitimes.
 
+// nosemgrep: javascript.express.security.audit.express-check-csurf-middleware-usage
 // Creation de l'instance Express : c'est cette app qu'on va exporter et utiliser dans server.js
 const app = express();
+// La règle Semgrep ci-dessus est ignorée volontairement car notre API utilise des JWT
+// envoyés dans le header Authorization (pas de cookies), ce qui rend les attaques CSRF
+// inapplicables par conception. Le middleware csurf n'est donc pas nécessaire ici.
 
 // CORS est indispensable pour autoriser les requetes depuis le frontend.
 // En dev local, le front et le back sont sur des ports differents (3000 et 5000), donc sans ça, le navigateur bloquerait les requetes.
