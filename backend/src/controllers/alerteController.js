@@ -167,12 +167,27 @@ exports.modifierAlerte = async (req, res) => {
         // REGLE METIER : Si le statut passe a 'resolue', on injecte l'utilisateur connecte et la date actuelle.
         // C'est important pour le suivi : on sait qui a resolu l'alerte et quand.
         // Je verifie aussi que l'alerte n'etait pas deja resolue pour eviter d'ecraser l'historique.
-        if (req.body.statut === 'resolue' && alerte.statut !== 'resolue') {
-        req.body.resoluePar = req.user._id; // L'ID de l'utilisateur extrait du token JWT
-        req.body.dateResolution = Date.now();
+        // CORRECTION SÉCURITÉ : Filtrage des champs autorisés pour empêcher la modification de champs sensibles.
+        // Avant : req.body était passé directement à findByIdAndUpdate, permettant à un utilisateur malveillant
+        // de modifier des champs critiques comme 'entreprise', 'resoluePar', 'dateResolution', ou tout autre champ non prévu.
+        // Risque : Un utilisateur pourrait modifier l'entreprise pour accéder aux alertes d'une autre entreprise,
+        // ou s'attribuer faussement la résolution d'une alerte en modifiant 'resoluePar'.
+        // Maintenant : On extrait uniquement les champs autorisés (titre, description, typeAlerte, niveauUrgence, statut).
+        const champsAutorises = ['titre', 'description', 'typeAlerte', 'niveauUrgence', 'statut'];
+        const donneesValides = {};
+        champsAutorises.forEach(champ => {
+            if (req.body[champ] !== undefined) {
+                donneesValides[champ] = req.body[champ];
+            }
+        });
+
+        // Gestion spéciale pour le statut 'resolue' : on injecte automatiquement resoluePar et dateResolution
+        if (donneesValides.statut === 'resolue' && alerte.statut !== 'resolue') {
+        donneesValides.resoluePar = req.user._id; // L'ID de l'utilisateur extrait du token JWT
+        donneesValides.dateResolution = Date.now();
         }
 
-        alerte = await Alerte.findByIdAndUpdate(id, req.body, {
+        alerte = await Alerte.findByIdAndUpdate(id, donneesValides, {
         new: true,
         runValidators: true
         });

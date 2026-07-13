@@ -10,6 +10,15 @@ const mongoose = require('mongoose');
  */
 const connectDB = async () => {
   try {
+    // CORRECTION SÉCURITÉ : Vérification de la présence de MONGO_URI avant tentative de connexion.
+    // Avant : process.env.MONGO_URI était utilisé directement sans vérification.
+    // Risque : Si la variable d'environnement est manquante, l'erreur serait détectée tardivement
+    // avec un message d'erreur cryptique de Mongoose, rendant le debug difficile.
+    // Maintenant : On vérifie explicitement que MONGO_URI existe et n'est pas vide avant de tenter la connexion.
+    if (!process.env.MONGO_URI) {
+      throw new Error('La variable d\'environnement MONGO_URI est manquante. Veuillez la définir dans le fichier .env.');
+    }
+
     // Mongoose gere automatiquement le pool de connexions.
     // Une seule connexion ici suffit pour toute l'application, Mongoose se charge de reutiliser les connexions.
     // J'ai hesite a ajouter des options de configuration (comme useNewUrlParser), mais Mongoose les gere par defaut maintenant.

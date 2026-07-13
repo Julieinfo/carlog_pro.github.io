@@ -28,7 +28,11 @@ const protect = async (req, res, next) => {
         // Verification cryptographique du JWT : si la signature n'est pas bonne, on bloque direct.
         // jwt.verify verifie que le token n'a pas ete modifie et qu'il n'est pas expire.
         // Si le secret ne correspond pas ou si le token est expire, une erreur est lancee.
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        // CORRECTION SÉCURITÉ : Ajout explicite de l'algorithme 'HS256' pour éviter les attaques par downgrade d'algorithme.
+        // Avant : jwt.verify(token, process.env.JWT_SECRET) sans spécifier d'algorithme.
+        // Risque : Un attaquant pourrait envoyer un token avec l'algorithme 'none' pour le faire accepter sans signature.
+        // Maintenant : L'algorithme est explicitement fixé à 'HS256', ce qui empêche toute tentative de downgrade.
+        const decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
 
         // On recharge l'utilisateur depuis la base pour avoir un contexte fiable dans les controleurs.
         // C'est important car le token ne contient que l'ID, pas les infos a jour de l'utilisateur.

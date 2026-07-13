@@ -16,8 +16,16 @@ const app = express();
 
 // CORS est indispensable pour autoriser les requetes depuis le frontend.
 // En dev local, le front et le back sont sur des ports differents (3000 et 5000), donc sans ça, le navigateur bloquerait les requetes.
-// J'ai mis la configuration par defaut, mais en prod on devrait restreindre les origines autorisees.
-app.use(cors());
+// CORRECTION SÉCURITÉ : Ajout d'une configuration restrictive pour autoriser uniquement les origines autorisées.
+// Avant : app.use(cors()) autorisait TOUTES les origines, ce qui est dangereux (risque d'attaques CSRF).
+// Maintenant : On autorise explicitement localhost en dev et l'URL de prod en environnement de production.
+const allowedOrigins = process.env.NODE_ENV === 'production' 
+    ? [process.env.FRONTEND_URL] 
+    : ['http://localhost:3000', 'http://127.0.0.1:3000'];
+app.use(cors({
+    origin: allowedOrigins,
+    credentials: true
+}));
 
 // Ce middleware parse automatiquement le JSON du corps des requetes.
 // Sans lui, req.body serait toujours undefined et on ne pourrait pas recuperer les donnees envoyees par le client.

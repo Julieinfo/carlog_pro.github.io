@@ -76,11 +76,24 @@ exports.getVehicules = async (req, res) => {
         // Recherche souple (insensible a la casse) sur les champs les plus utilises en exploitation.
         // L'operateur $regex avec l'option 'i' permet une recherche partielle et insensible a la casse.
         // J'ai limite la recherche a 3 champs pour eviter de surcharger la base si le parc est grand.
+        // CORRECTION SÉCURITÉ : Échappement des caractères spéciaux et validation de la chaîne de recherche.
+        // Avant : L'entrée utilisateur était directement utilisée dans $regex sans validation.
+        // Risque : Un attaquant pourrait injecter des patterns regex malveillants (ex: ".*.*.*.*") pour provoquer
+        // une attaque ReDoS (Regular Expression Denial of Service) et surcharger le serveur.
+        // Maintenant : On échappe les caractères spéciaux regex et on limite la longueur de la chaîne de recherche.
         if (search) {
+            // Validation de la longueur pour éviter les chaînes trop longues
+            if (search.length > 100) {
+                return res.status(400).json({ message: 'La recherche ne peut pas dépasser 100 caractères.' });
+            }
+
+            // Échappement des caractères spéciaux regex pour éviter l'injection de patterns malveillants
+            const searchEscape = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
             filtres.$or = [
-                { immatriculation: { $regex: search, $options: 'i' } },
-                { marque: { $regex: search, $options: 'i' } },
-                { modele: { $regex: search, $options: 'i' } }
+                { immatriculation: { $regex: searchEscape, $options: 'i' } },
+                { marque: { $regex: searchEscape, $options: 'i' } },
+                { modele: { $regex: searchEscape, $options: 'i' } }
             ];
         }
 
@@ -193,10 +206,23 @@ exports.modifierVehicule = async (req, res) => {
         req.body.immatriculation = req.body.immatriculation.toUpperCase().trim();
         }
 
+        // CORRECTION SÉCURITÉ : Filtrage des champs autorisés pour empêcher la modification de champs sensibles.
+        // Avant : req.body était passé directement à findByIdAndUpdate, permettant à un utilisateur malveillant
+        // de modifier des champs critiques comme 'entreprise', 'actif', ou tout autre champ non prévu.
+        // Risque : Un utilisateur pourrait se donner accès à des véhicules d'une autre entreprise en modifiant le champ 'entreprise'.
+        // Maintenant : On extrait uniquement les champs autorisés (immatriculation, marque, modele, typeVehicule, kilometrage, ptac, carburant, statut).
+        const champsAutorises = ['immatriculation', 'marque', 'modele', 'typeVehicule', 'kilometrage', 'ptac', 'carburant', 'statut'];
+        const donneesValides = {};
+        champsAutorises.forEach(champ => {
+            if (req.body[champ] !== undefined) {
+                donneesValides[champ] = req.body[champ];
+            }
+        });
+
         // runValidators est important ici : sinon certains updates contournent les validations Mongoose.
         // Par defaut, Mongoose ne valide pas les champs lors d'un update, ce qui pourrait permettre
         // d'inserer des donnees invalides. J'active cette option pour garantir la coherence des donnees.
-        vehicule = await Vehicule.findByIdAndUpdate(id, req.body, {
+        vehicule = await Vehicule.findByIdAndUpdate(id, donneesValides, {
         new: true,
         runValidators: true
         });

@@ -149,9 +149,22 @@ exports.modifierAffectation = async (req, res) => {
         // findOneAndUpdate est parfait pour ca : il fait la recherche et la mise a jour en une seule operation atomique.
         // new: true renvoie le document modifie (pas l'ancien).
         // runValidators: true est important pour que les validations du schema Mongoose s'appliquent meme sur update.
+        // CORRECTION SÉCURITÉ : Filtrage des champs autorisés pour empêcher la modification de champs sensibles.
+        // Avant : req.body était passé directement à findOneAndUpdate, permettant à un utilisateur malveillant
+        // de modifier des champs critiques comme 'entreprise', 'statut', ou tout autre champ non prévu.
+        // Risque : Un utilisateur pourrait modifier l'entreprise pour accéder aux affectations d'une autre entreprise.
+        // Maintenant : On extrait uniquement les champs autorisés (vehicule, conducteur, dateDebut, kmDebut, observations, dateFin, kmFin).
+        const champsAutorises = ['vehicule', 'conducteur', 'dateDebut', 'kmDebut', 'observations', 'dateFin', 'kmFin'];
+        const donneesValides = {};
+        champsAutorises.forEach(champ => {
+            if (req.body[champ] !== undefined) {
+                donneesValides[champ] = req.body[champ];
+            }
+        });
+
         const affectationModifiee = await Affectation.findOneAndUpdate(
             { _id: req.params.id, entreprise: entrepriseId },
-            req.body,
+            donneesValides,
             { new: true, runValidators: true }
         );
 

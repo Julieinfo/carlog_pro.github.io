@@ -11,8 +11,12 @@ const Entreprise = require('../models/Entreprise');
  * Note : Le token dure 7 jours pour eviter une reconnexion trop frequente tout en restant raisonnable cote securite.
  * J'aurais pu choisir une duree plus courte (ex: 1h) pour plus de securite, mais 7 jours est un bon compromis UX/securite pour ce type d'application.
  */
+// CORRECTION SÉCURITÉ : Ajout explicite de l'algorithme 'HS256' pour éviter les attaques par downgrade d'algorithme.
+// Avant : jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '7d' }) sans spécifier d'algorithme.
+// Risque : Un attaquant pourrait forcer l'utilisation de l'algorithme 'none' pour créer des tokens forgés.
+// Maintenant : L'algorithme est explicitement fixé à 'HS256', ce qui empêche toute tentative de downgrade.
 const genererToken = (id) =>
-    jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    jwt.sign({ id }, process.env.JWT_SECRET, { algorithm: 'HS256', expiresIn: '7d' });
 
 // Inscription SaaS : creation de l'entreprise + creation du premier admin dans la meme action.
 // C'est une operation complexe car elle touche deux collections differentes (User et Entreprise).
