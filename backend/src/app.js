@@ -27,6 +27,11 @@ app.use(cors({
     credentials: true
 }));
 
+// NOTE SÉCURITÉ : Pas de middleware CSRF (csurf) car cette API utilise JWT stocké dans localStorage, pas de cookies.
+// Les attaques CSRF nécessitent que le navigateur envoie automatiquement des cookies d'authentification avec chaque requête.
+// Comme nos JWT sont envoyés manuellement dans le header Authorization (Bearer token), le navigateur ne les envoie pas automatiquement,
+// ce qui rend les attaques CSRF impossibles. Le middleware csurf ne serait donc pas utile ici et pourrait causer des problèmes.
+
 // Ce middleware parse automatiquement le JSON du corps des requetes.
 // Sans lui, req.body serait toujours undefined et on ne pourrait pas recuperer les donnees envoyees par le client.
 // J'ai hesite a mettre une limite de taille, mais pour l'instant la config par defaut suffit.

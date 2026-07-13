@@ -153,14 +153,17 @@ exports.modifierAffectation = async (req, res) => {
         // Avant : req.body était passé directement à findOneAndUpdate, permettant à un utilisateur malveillant
         // de modifier des champs critiques comme 'entreprise', 'statut', ou tout autre champ non prévu.
         // Risque : Un utilisateur pourrait modifier l'entreprise pour accéder aux affectations d'une autre entreprise.
-        // Maintenant : On extrait uniquement les champs autorisés (vehicule, conducteur, dateDebut, kmDebut, observations, dateFin, kmFin).
-        const champsAutorises = ['vehicule', 'conducteur', 'dateDebut', 'kmDebut', 'observations', 'dateFin', 'kmFin'];
-        const donneesValides = {};
-        champsAutorises.forEach(champ => {
-            if (req.body[champ] !== undefined) {
-                donneesValides[champ] = req.body[champ];
-            }
-        });
+        // Maintenant : On extrait uniquement les champs autorisés de manière explicite (whitelist statique)
+        // pour éviter toute injection de propriété distante (remote property injection).
+        const donneesValides = {
+            ...(req.body.vehicule !== undefined && { vehicule: req.body.vehicule }),
+            ...(req.body.conducteur !== undefined && { conducteur: req.body.conducteur }),
+            ...(req.body.dateDebut !== undefined && { dateDebut: req.body.dateDebut }),
+            ...(req.body.kmDebut !== undefined && { kmDebut: req.body.kmDebut }),
+            ...(req.body.observations !== undefined && { observations: req.body.observations }),
+            ...(req.body.dateFin !== undefined && { dateFin: req.body.dateFin }),
+            ...(req.body.kmFin !== undefined && { kmFin: req.body.kmFin })
+        };
 
         const affectationModifiee = await Affectation.findOneAndUpdate(
             { _id: req.params.id, entreprise: entrepriseId },

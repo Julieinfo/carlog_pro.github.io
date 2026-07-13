@@ -172,14 +172,15 @@ exports.modifierAlerte = async (req, res) => {
         // de modifier des champs critiques comme 'entreprise', 'resoluePar', 'dateResolution', ou tout autre champ non prévu.
         // Risque : Un utilisateur pourrait modifier l'entreprise pour accéder aux alertes d'une autre entreprise,
         // ou s'attribuer faussement la résolution d'une alerte en modifiant 'resoluePar'.
-        // Maintenant : On extrait uniquement les champs autorisés (titre, description, typeAlerte, niveauUrgence, statut).
-        const champsAutorises = ['titre', 'description', 'typeAlerte', 'niveauUrgence', 'statut'];
-        const donneesValides = {};
-        champsAutorises.forEach(champ => {
-            if (req.body[champ] !== undefined) {
-                donneesValides[champ] = req.body[champ];
-            }
-        });
+        // Maintenant : On extrait uniquement les champs autorisés de manière explicite (whitelist statique)
+        // pour éviter toute injection de propriété distante (remote property injection).
+        const donneesValides = {
+            ...(req.body.titre !== undefined && { titre: req.body.titre }),
+            ...(req.body.description !== undefined && { description: req.body.description }),
+            ...(req.body.typeAlerte !== undefined && { typeAlerte: req.body.typeAlerte }),
+            ...(req.body.niveauUrgence !== undefined && { niveauUrgence: req.body.niveauUrgence }),
+            ...(req.body.statut !== undefined && { statut: req.body.statut })
+        };
 
         // Gestion spéciale pour le statut 'resolue' : on injecte automatiquement resoluePar et dateResolution
         if (donneesValides.statut === 'resolue' && alerte.statut !== 'resolue') {

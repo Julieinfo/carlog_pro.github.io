@@ -210,14 +210,18 @@ exports.modifierVehicule = async (req, res) => {
         // Avant : req.body était passé directement à findByIdAndUpdate, permettant à un utilisateur malveillant
         // de modifier des champs critiques comme 'entreprise', 'actif', ou tout autre champ non prévu.
         // Risque : Un utilisateur pourrait se donner accès à des véhicules d'une autre entreprise en modifiant le champ 'entreprise'.
-        // Maintenant : On extrait uniquement les champs autorisés (immatriculation, marque, modele, typeVehicule, kilometrage, ptac, carburant, statut).
-        const champsAutorises = ['immatriculation', 'marque', 'modele', 'typeVehicule', 'kilometrage', 'ptac', 'carburant', 'statut'];
-        const donneesValides = {};
-        champsAutorises.forEach(champ => {
-            if (req.body[champ] !== undefined) {
-                donneesValides[champ] = req.body[champ];
-            }
-        });
+        // Maintenant : On extrait uniquement les champs autorisés de manière explicite (whitelist statique)
+        // pour éviter toute injection de propriété distante (remote property injection).
+        const donneesValides = {
+            ...(req.body.immatriculation !== undefined && { immatriculation: req.body.immatriculation }),
+            ...(req.body.marque !== undefined && { marque: req.body.marque }),
+            ...(req.body.modele !== undefined && { modele: req.body.modele }),
+            ...(req.body.typeVehicule !== undefined && { typeVehicule: req.body.typeVehicule }),
+            ...(req.body.kilometrage !== undefined && { kilometrage: req.body.kilometrage }),
+            ...(req.body.ptac !== undefined && { ptac: req.body.ptac }),
+            ...(req.body.carburant !== undefined && { carburant: req.body.carburant }),
+            ...(req.body.statut !== undefined && { statut: req.body.statut })
+        };
 
         // runValidators est important ici : sinon certains updates contournent les validations Mongoose.
         // Par defaut, Mongoose ne valide pas les champs lors d'un update, ce qui pourrait permettre
