@@ -11,6 +11,14 @@ const alerteRoutes = require('./routes/alerteRoutes');
 const statsRoutes = require('./routes/statsRoutes');
 const { swaggerUi, specs } = require('./config/swagger');
 
+// NOTE SÉCURITÉ : Pas de middleware CSRF nécessaire pour cette API REST avec JWT.
+// Les attaques CSRF (Cross-Site Request Forgery) exploitent le fait que les navigateurs envoient
+// automatiquement les cookies d'authentification avec chaque requête vers un domaine.
+// Notre API utilise des JWT stockés dans localStorage et envoyés manuellement dans le header
+// Authorization (format "Bearer <token>"), donc le navigateur ne les envoie pas automatiquement.
+// Sans cookie d'authentification automatique, les attaques CSRF sont impossibles par conception.
+// Le middleware csurf serait donc inutile ici et pourrait même bloquer les requêtes légitimes.
+
 // Creation de l'instance Express : c'est cette app qu'on va exporter et utiliser dans server.js
 const app = express();
 
