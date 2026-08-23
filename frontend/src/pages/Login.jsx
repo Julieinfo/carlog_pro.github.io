@@ -3,23 +3,24 @@ import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 export default function Login({ onGoToRegister }) {
-  // State local du formulaire (semaine 1 : props vs state)
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState('julietest@gmail.com');
   const [motDePasse, setMotDePasse] = useState('');
   const [erreur, setErreur] = useState('');
   const [chargement, setChargement] = useState(false);
-
   const { login } = useAuth();
 
   async function handleSubmit(e) {
     e.preventDefault();
     setErreur('');
     setChargement(true);
+
     try {
-      const data = await api.connexion({ email, motDePasse });
+      const res = await api.connexion({ email, motDePasse });
+      // On extrait user et token qu'Axios soit déballé ou non dans api.js
+      const data = res.data || res;
       login(data.user, data.token);
     } catch (err) {
-      setErreur(err.message);
+      setErreur(err.response?.data?.message || 'Identifiants invalides');
     } finally {
       setChargement(false);
     }
@@ -38,7 +39,6 @@ export default function Login({ onGoToRegister }) {
             required
           />
         </label>
-
         <label>
           Mot de passe
           <input
@@ -49,8 +49,7 @@ export default function Login({ onGoToRegister }) {
           />
         </label>
 
-        {/* Rendu conditionnel (semaine 1) */}
-        {erreur && <p className="erreur">{erreur}</p>}
+        {erreur && <p className="erreur" style={{ color: 'red' }}>{erreur}</p>}
 
         <button type="submit" disabled={chargement}>
           {chargement ? 'Connexion...' : 'Se connecter'}

@@ -3,32 +3,48 @@ import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 export default function Dashboard() {
-  const { token } = useAuth();
+  const { token, logout, user } = useAuth();
 
   const [vehicules, setVehicules] = useState([]);
   const [alertes, setAlertes] = useState([]);
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState('');
 
-  // useEffect avec [token] en dépendance : se relance si le token change
-  // (semaine 2 : cycle de vie, dépendances)
   useEffect(() => {
-    let annule = false; // évite de mettre à jour le state si le composant est démonté (cleanup, semaine 2)
+    let annule = false;
 
     async function chargerDonnees() {
       setChargement(true);
       setErreur('');
       try {
-        const [dataVehicules, dataAlertes] = await Promise.all([
-          api.getVehicules(token),
-          api.getAlertes(token),
+        const [resVehicules, resAlertes] = await Promise.all([
+          api.getVehicules(),
+          api.getAlertes(),
         ]);
+
         if (!annule) {
-          setVehicules(dataVehicules.vehicules || dataVehicules);
-          setAlertes(dataAlertes.alertes || dataAlertes);
+          const dataV = resVehicules.data || resVehicules;
+          const dataA = resAlertes.data || resAlertes;
+
+          const listeVehicules = Array.isArray(dataV)
+            ? dataV
+            : Array.isArray(dataV.vehicules)
+            ? dataV.vehicules
+            : [];
+
+          const listeAlertes = Array.isArray(dataA)
+            ? dataA
+            : Array.isArray(dataA.alertes)
+            ? dataA.alertes
+            : [];
+
+          setVehicules(listeVehicules);
+          setAlertes(listeAlertes);
         }
       } catch (err) {
-        if (!annule) setErreur(err.message);
+        if (!annule) {
+          setErreur(err.response?.data?.message || err.message);
+        }
       } finally {
         if (!annule) setChargement(false);
       }
@@ -37,39 +53,103 @@ export default function Dashboard() {
     chargerDonnees();
 
     return () => {
-      annule = true; // cleanup
+      annule = true;
     };
   }, [token]);
 
-  if (chargement) return <p>Chargement du tableau de bord...</p>;
-  if (erreur) return <p className="erreur">Erreur : {erreur}</p>;
+  if (chargement) {
+    return (
+      <div className="dashboard-container">
+        <p className="empty-state">Chargement du tableau de bord...</p>
+      </div>
+    );
+  }
+
+  if (erreur) {
+    return (
+      <div className="dashboard-container">
+        <p style={{ color: 'var(--primary-red)', padding: '20px' }}>
+          Erreur : {erreur}
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <div className="dashboard">
-      <h1>Tableau de bord</h1>
+    <div>
+      {/* Header CarLog Pro */}
+      <header className="navbar">
+        <div className="logo">
+          CarLog <span>Pro</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <span>
+            Bonjour, <strong>{user?.prenom || 'Julie'}</strong>
+          </span>
+          <button className="btn-logout" onClick={logout}>
+            Déconnexion
+          </button>
+        </div>
+      </header>
 
-      <section>
-        <h2>Véhicules ({vehicules.length})</h2>
-        {/* Rendu de liste avec key unique (semaine 1) */}
-        <ul>
-          {vehicules.map((v) => (
-            <li key={v._id}>
-              {v.marque} {v.modele} — {v.immatriculation} — {v.statut}
-            </li>
-          ))}
-        </ul>
-      </section>
+      {/* Contenu principal */}
+      <main className="dashboard-container">
+        <h1 className="dashboard-title">Tableau de bord</h1>
 
-      <section>
-        <h2>Alertes actives ({alertes.length})</h2>
-        <ul>
-          {alertes.map((a) => (
-            <li key={a._id}>
-              [{a.niveauUrgence}] {a.typeAlerte} — {a.statut}
-            </li>
-          ))}
-        </ul>
-      </section>
+        <div className="dashboard-grid">
+          {/* Section Véhicules */}
+          <section className="card-section">
+            <div className="section-header">
+              <h2>Flotte automobile</h2>
+              <span className="count-badge">{vehicules.length} véhicules</span>
+            </div>
+            {vehicules.length === 0 ? (
+              <p className="empty-state">Aucun véhicule enregistré dans la flotte.</p>
+            ) : (
+              <ul className="data-list">
+                {vehicules.map((v, index) => (
+                  <li className="data-item" key={v._id || index}>
+                    <div>
+                      <div className="item-title">
+                        {v.marque || 'Marque inconnue'} {v.modele || ''}
+                      </div>
+                      <div className="item-sub">
+                        {v.immatriculation || 'Sans immatriculation'}
+                      </div>
+                    </div>
+                    <span className="item-sub">{v.statut || 'N/A'}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          {/* Section Alertes */}
+          <section className="card-section">
+            <div className="section-header">
+              <h2>Alertes de maintenance</h2>
+              <span className="count-badge">{alertes.length} actives</span>
+            </div>
+            {alertes.length === 0 ? (
+              <p className="empty-state">Aucune alerte active pour le moment.</p>
+            ) : (
+              <ul className="data-list">
+                {alertes.map((a, index) => (
+                  <li className="data-item" key={a._id || index}>
+                    <div>
+                      <div className="item-title">{a.typeAlerte || 'Alerte'}</div>
+                      <div className="item-sub">
+                        Urgence : {a.niveauUrgence || 'Info'}
+                      </div>
+                    </div>
+                    <span className="item-sub">{a.statut || 'N/A'}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
+      </main>
     </div>
   );
 }

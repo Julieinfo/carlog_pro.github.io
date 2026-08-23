@@ -1,35 +1,42 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+import axios from 'axios';
 
-/**
- * Wrapper simple autour de fetch.
- * Ajoute automatiquement le token JWT s'il est présent, et lève une erreur
- * lisible en cas de réponse non OK (géré ensuite avec try/catch + useState
- * dans les pages, comme vu en semaine 2).
- */
-async function request(path, { method = 'GET', body, token } = {}) {
-  const headers = { 'Content-Type': 'application/json' };
-  if (token) headers.Authorization = `Bearer ${token}`;
+const API = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
+});
 
-  const res = await fetch(`${API_URL}${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
-
-  const data = await res.json().catch(() => null);
-
-  if (!res.ok) {
-    const message = data?.message || `Erreur ${res.status}`;
-    throw new Error(message);
+// Intercepteur pour injecter automatiquement le token JWT s'il existe dans le localStorage
+API.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
+  return config;
+});
 
-  return data;
-}
-
+// Export des méthodes réutilisables dans toute l'application
 export const api = {
-  inscription: (payload) => request('/auth/inscription', { method: 'POST', body: payload }),
-  connexion: (payload) => request('/auth/connexion', { method: 'POST', body: payload }),
-  getVehicules: (token) => request('/vehicules', { token }),
-  getAlertes: (token) => request('/alertes', { token }),
-  getStats: (token) => request('/stats', { token }),
+  // Authentification
+  connexion: (credentials) => API.post('/auth/connexion', credentials),
+  inscription: (userData) => API.post('/auth/inscription', userData),
+
+  // Véhicules
+  getVehicules: () => API.get('/vehicules'),
+  addVehicule: (data) => API.post('/vehicules', data),
+  updateVehicule: (id, data) => API.put(`/vehicules/${id}`, data),
+  deleteVehicule: (id) => API.delete(`/vehicules/${id}`),
+
+  // Alertes
+  getAlertes: () => API.get('/alertes'),
+  addAlerte: (data) => API.post('/alertes', data),
+  updateAlerte: (id, data) => API.put(`/alertes/${id}`, data),
+  deleteAlerte: (id) => API.delete(`/alertes/${id}`),
+
+  // Affectations
+  getAffectations: () => API.get('/affectations'),
+  addAffectation: (data) => API.post('/affectations', data),
+
+  // Statistiques
+  getStats: () => API.get('/stats'),
 };
+
+export default API;

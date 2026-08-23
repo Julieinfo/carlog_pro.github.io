@@ -1,29 +1,20 @@
-import { useState } from 'react';
 import { useAuth } from './context/AuthContext';
-import Navbar from './components/Navbar';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
+import { useState } from 'react';
 
-// Pas de React Router pour l'instant (vu en semaine 8).
-// La "navigation" est simulée avec un simple state 'page' :
-// c'est volontairement basique, à remplacer plus tard par React Router.
 export default function App() {
-  const { isAuthenticated, user, logout } = useAuth();
-  const [page, setPage] = useState('login'); // 'login' | 'register'
+  const { isAuthenticated } = useAuth();
+  const [pageAuth, setPageAuth] = useState('login'); // 'login' ou 'register'
 
   if (!isAuthenticated) {
-    return page === 'login' ? (
-      <Login onGoToRegister={() => setPage('register')} />
+    return pageAuth === 'login' ? (
+      <Login onGoToRegister={() => setPageAuth('register')} />
     ) : (
-      <Register onGoToLogin={() => setPage('login')} />
+      <Register onGoToLogin={() => setPageAuth('login')} />
     );
   }
 
-  return (
-    <div className="app">
-      <Navbar userName={user?.prenom || 'Utilisateur'} onLogout={logout} />
-      <Dashboard />
-    </div>
-  );
+  return <Dashboard />;
 }

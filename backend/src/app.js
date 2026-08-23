@@ -33,7 +33,7 @@ const app = express();
 // Maintenant : On autorise explicitement localhost en dev et l'URL de prod en environnement de production.
 const allowedOrigins = process.env.NODE_ENV === 'production' 
     ? [process.env.FRONTEND_URL] 
-    : ['http://localhost:3000', 'http://127.0.0.1:3000'];
+    : ['http://localhost:3000', 'http://localhost:5173', 'http://127.0.0.1:3000', 'http://127.0.0.1:5173'];
 app.use(cors({
     origin: allowedOrigins,
     credentials: true
